@@ -41,6 +41,13 @@
       }
       .badge-ready { background: #d1fae5; color: #065f46; }
       .badge-waiting { background: #fef3c7; color: #92400e; }
+      .badge-paused { background: #e5e7eb; color: #374151; }
+      .btn-pause { color: #d97706; border-color: #fcd34d; }
+      .btn-pause:hover { background: #fffbeb; }
+      .btn-resume { color: #059669; border-color: #a7f3d0; }
+      .btn-resume:hover { background: #ecfdf5; }
+      .btn-delete { color: #dc2626; border-color: #fca5a5; }
+      .btn-delete:hover { background: #fef2f2; }
       
       .bot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
       .bot-item { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
@@ -140,12 +147,30 @@
 
       <!-- OVERVIEW TAB -->
       <div id="overview" class="tab-content active">
-        <div class="card">
-          <div class="card-header">
-            <h3>Connected Bots</h3>
-            <button class="btn btn-refresh" onclick="refreshBots()">🔄 Refresh Status</button>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header">
+              <h3>Connected Bots</h3>
+              <button class="btn btn-refresh" onclick="refreshBots()">🔄 Refresh Status</button>
+            </div>
+            <div class="bot-grid" id="bots-grid">Loading...</div>
           </div>
-          <div class="bot-grid" id="bots-grid">Loading...</div>
+          
+          <div class="card" style="align-self: start;">
+            <h3>🛠️ Create New Bot</h3>
+            <form onsubmit="createBot(event)">
+              <div class="form-group">
+                <label>Bot ID (alphanumeric & underscores only):</label>
+                <input type="text" id="createBotId" placeholder="e.g. sales_bot" required />
+              </div>
+              <div class="form-group">
+                <label>Bot Name:</label>
+                <input type="text" id="createBotName" placeholder="e.g. Sales Agent Bot" required />
+              </div>
+              <button type="submit" class="btn btn-primary">Create Bot</button>
+            </form>
+            <div id="createBotResult" class="result" style="display: none;"></div>
+          </div>
         </div>
       </div>
 
@@ -265,8 +290,8 @@
             <h4>${bot.name}</h4>
             <div class="bot-info"><strong>ID:</strong> ${bot.id}</div>
             <div class="bot-info">
-              <span class="badge ${bot.ready ? 'badge-ready' : 'badge-waiting'}">
-                ${bot.ready ? '✓ Ready' : '⏳ Waiting'}
+              <span class="badge ${bot.enabled ? (bot.ready ? 'badge-ready' : 'badge-waiting') : 'badge-paused'}">
+                ${bot.enabled ? (bot.ready ? '✓ Ready' : '⏳ Waiting') : '⏸ Paused'}
               </span>
             </div>
             <div class="bot-info"><strong>Messages:</strong> ${bot.messageCount}</div>
@@ -275,6 +300,10 @@
             <div class="bot-actions">
               <button class="btn-small" onclick="viewBotKeys('${bot.id}')">🔑 Keys</button>
               <button class="btn-small" onclick="viewBotHistory('${bot.id}')">📋 History</button>
+              <button class="btn-small ${bot.enabled ? 'btn-pause' : 'btn-resume'}" onclick="toggleBot('${bot.id}')">
+                ${bot.enabled ? '⏸ Pause' : '▶ Resume'}
+              </button>
+              <button class="btn-small btn-delete" onclick="deleteBot('${bot.id}')">🗑 Delete</button>
             </div>
           </div>
         `).join('');
@@ -438,6 +467,73 @@
         } catch (err) {
           result.className = 'result error';
           result.textContent = 'Error: ' + err.message;
+        }
+      }
+
+      async function createBot(e) {
+        e.preventDefault();
+        const id = document.getElementById('createBotId').value.trim();
+        const name = document.getElementById('createBotName').value.trim();
+        const result = document.getElementById('createBotResult');
+
+        result.textContent = 'Creating bot...';
+        result.className = 'result';
+        result.style.display = 'block';
+
+        try {
+          const res = await fetch(`${API_BASE}/bots/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, name })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            result.className = 'result success';
+            result.textContent = `Bot created successfully!\nGenerated API Key: ${data.bot.apiKeys[0]}`;
+            document.getElementById('createBotId').value = '';
+            document.getElementById('createBotName').value = '';
+            refreshBots();
+          } else {
+            result.className = 'result error';
+            result.textContent = `Error: ${data.error || 'Failed to create bot'}`;
+          }
+        } catch (err) {
+          result.className = 'result error';
+          result.textContent = 'Error: ' + err.message;
+        }
+      }
+
+      async function toggleBot(botId) {
+        if (!confirm(`Are you sure you want to pause/resume bot '${botId}'?`)) return;
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/toggle`, {
+            method: 'POST'
+          });
+          const data = await res.json();
+          if (res.ok) {
+            refreshBots();
+          } else {
+            alert(`Error: ${data.error || 'Failed to toggle bot'}`);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      }
+
+      async function deleteBot(botId) {
+        if (!confirm(`Are you sure you want to delete bot '${botId}'? This will disconnect it and remove all session files.`)) return;
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/remove`, {
+            method: 'POST'
+          });
+          const data = await res.json();
+          if (res.ok) {
+            refreshBots();
+          } else {
+            alert(`Error: ${data.error || 'Failed to delete bot'}`);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
         }
       }
 

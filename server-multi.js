@@ -21,14 +21,7 @@ const botsConfig = JSON.parse(fs.readFileSync(botsConfigPath, 'utf8'));
 const bots = {};
 const botStates = {};
 
-// Initialize bots
-console.log('[STARTUP] Initializing bots from configuration...');
-botsConfig.bots.forEach(botConfig => {
-  if (!botConfig.enabled) {
-    console.log(`[STARTUP] Bot '${botConfig.id}' is disabled, skipping...`);
-    return;
-  }
-
+const initializeBot = (botConfig) => {
   console.log(`[STARTUP] Creating bot: ${botConfig.id} (${botConfig.name})`);
   
   const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -121,9 +114,28 @@ botsConfig.bots.forEach(botConfig => {
   // Store the client and initialize
   bots[botConfig.id] = client;
   client.initialize();
-  setInterval(() => {
+  
+  const syncInterval = setInterval(() => {
     syncBotConnectionState();
   }, 5000);
+
+  botStates[botConfig.id].syncInterval = syncInterval;
+};
+
+// Initialize bots from configuration
+console.log('[STARTUP] Initializing bots from configuration...');
+botsConfig.bots.forEach(botConfig => {
+  if (botConfig.enabled) {
+    initializeBot(botConfig);
+  } else {
+    console.log(`[STARTUP] Bot '${botConfig.id}' is disabled, skipping client creation but loading config.`);
+    botStates[botConfig.id] = {
+      ready: false,
+      qrCodeData: null,
+      lastSession: null,
+      config: botConfig
+    };
+  }
 });
 
 // Middleware
@@ -140,7 +152,7 @@ const validateApiKey = (req, res, next) => {
     return res.status(400).json({ error: 'Missing botId parameter' });
   }
 
-  if (!bots[botId]) {
+  if (!botStates[botId]) {
     console.log(`[AUTH_FAIL] Bot '${botId}' not found`);
     return res.status(404).json({ error: `Bot '${botId}' not found` });
   }
@@ -157,7 +169,7 @@ const messageHistory = {};
 
 // Get all bots and their status
 app.get('/bots', (req, res) => {
-  const botsList = Object.keys(bots).map(botId => ({
+  const botsList = Object.keys(botStates).map(botId => ({
     id: botId,
     name: botStates[botId].config.name,
     ready: botStates[botId].ready,
@@ -168,6 +180,141 @@ app.get('/bots', (req, res) => {
     messageCount: (messageHistory[botId] || []).length
   }));
   res.json({ bots: botsList });
+});
+
+// Create a new bot
+app.post('/bots/create', (req, res) => {
+  const { id, name } = req.body;
+  if (!id || !name) {
+    return res.status(400).json({ error: 'id and name are required' });
+  }
+
+  const idRegex = /^[a-zA-Z0-9_]+$/;
+  if (!idRegex.test(id)) {
+    return res.status(400).json({ error: 'id must be alphanumeric and underscores only' });
+  }
+
+  if (botStates[id]) {
+    return res.status(400).json({ error: `Bot with ID '${id}' already exists` });
+  }
+
+  // Generate a random API key for the bot
+  const randomStr = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+  const newApiKey = `sk_live_${id}_${randomStr}`;
+
+  const newBotConfig = {
+    id,
+    name,
+    enabled: true,
+    apiKeys: [newApiKey]
+  };
+
+  botsConfig.bots.push(newBotConfig);
+  try {
+    fs.writeFileSync(botsConfigPath, JSON.stringify(botsConfig, null, 2), 'utf8');
+  } catch (error) {
+    console.error('[ERROR] Failed to save bots.config.json:', error);
+    return res.status(500).json({ error: 'Failed to write configuration file' });
+  }
+
+  initializeBot(newBotConfig);
+
+  res.json({ success: true, bot: newBotConfig });
+});
+
+// Toggle bot enabled/paused state
+app.post('/bots/:botId/toggle', async (req, res) => {
+  const { botId } = req.params;
+  if (!botStates[botId]) {
+    return res.status(404).json({ error: `Bot '${botId}' not found` });
+  }
+
+  const configIndex = botsConfig.bots.findIndex(b => b.id === botId);
+  if (configIndex === -1) {
+    return res.status(404).json({ error: `Bot '${botId}' not found in configuration` });
+  }
+
+  const currentlyEnabled = botStates[botId].config.enabled;
+  const targetEnabled = !currentlyEnabled;
+
+  botStates[botId].config.enabled = targetEnabled;
+  botsConfig.bots[configIndex].enabled = targetEnabled;
+
+  try {
+    fs.writeFileSync(botsConfigPath, JSON.stringify(botsConfig, null, 2), 'utf8');
+  } catch (error) {
+    console.error('[ERROR] Failed to save bots.config.json:', error);
+    return res.status(500).json({ error: 'Failed to write configuration file' });
+  }
+
+  if (targetEnabled) {
+    console.log(`[MANAGEMENT] Resuming bot '${botId}'...`);
+    initializeBot(botStates[botId].config);
+  } else {
+    console.log(`[MANAGEMENT] Pausing bot '${botId}'...`);
+    const client = bots[botId];
+    if (client) {
+      if (botStates[botId].syncInterval) {
+        clearInterval(botStates[botId].syncInterval);
+      }
+      try {
+        await client.destroy();
+      } catch (err) {
+        console.error(`[ERROR] Error destroying client for bot '${botId}':`, err);
+      }
+      delete bots[botId];
+    }
+    botStates[botId].ready = false;
+    botStates[botId].qrCodeData = null;
+  }
+
+  res.json({ success: true, enabled: targetEnabled });
+});
+
+// Remove/delete a bot
+app.post('/bots/:botId/remove', async (req, res) => {
+  const { botId } = req.params;
+  if (!botStates[botId]) {
+    return res.status(404).json({ error: `Bot '${botId}' not found` });
+  }
+
+  const configIndex = botsConfig.bots.findIndex(b => b.id === botId);
+  
+  const client = bots[botId];
+  if (client) {
+    if (botStates[botId].syncInterval) {
+      clearInterval(botStates[botId].syncInterval);
+    }
+    try {
+      await client.destroy();
+    } catch (err) {
+      console.error(`[ERROR] Error destroying client for bot '${botId}':`, err);
+    }
+    delete bots[botId];
+  }
+
+  const sessionDir = path.join(__dirname, '.wwebjs_auth', `session-${botId}`);
+  if (fs.existsSync(sessionDir)) {
+    try {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+      console.log(`[MANAGEMENT] Removed session directory for bot '${botId}'`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to delete session directory for bot '${botId}':`, error);
+    }
+  }
+
+  delete botStates[botId];
+  if (configIndex !== -1) {
+    botsConfig.bots.splice(configIndex, 1);
+    try {
+      fs.writeFileSync(botsConfigPath, JSON.stringify(botsConfig, null, 2), 'utf8');
+    } catch (error) {
+      console.error('[ERROR] Failed to save bots.config.json:', error);
+      return res.status(500).json({ error: 'Failed to write configuration file' });
+    }
+  }
+
+  res.json({ success: true });
 });
 
 // Get single bot status

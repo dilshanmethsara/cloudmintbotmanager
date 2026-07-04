@@ -13,8 +13,21 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3333;
 
-// Load bot configuration
-const botsConfigPath = path.join(__dirname, 'bots.config.json');
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const botsConfigPath = path.join(DATA_DIR, 'bots.config.json');
+
+// Ensure bots.config.json exists in DATA_DIR
+if (!fs.existsSync(botsConfigPath)) {
+  const defaultPath = path.join(__dirname, 'bots.config.json');
+  if (fs.existsSync(defaultPath)) {
+    fs.copyFileSync(defaultPath, botsConfigPath);
+    console.log(`[STARTUP] Copied default bots.config.json to ${botsConfigPath}`);
+  } else {
+    fs.writeFileSync(botsConfigPath, JSON.stringify({ bots: [] }, null, 2), 'utf8');
+    console.log(`[STARTUP] Created new empty bots.config.json at ${botsConfigPath}`);
+  }
+}
+
 const botsConfig = JSON.parse(fs.readFileSync(botsConfigPath, 'utf8'));
 
 // Store bot instances and their states
@@ -30,7 +43,10 @@ const initializeBot = (botConfig) => {
     (require('fs').existsSync(chromePath) ? chromePath : edgePath);
 
   const client = new Client({
-    authStrategy: new LocalAuth({ clientId: botConfig.id }),
+    authStrategy: new LocalAuth({ 
+      clientId: botConfig.id,
+      dataPath: path.join(DATA_DIR, '.wwebjs_auth')
+    }),
     puppeteer: {
       headless: true,
       executablePath: browserExecutablePath,
@@ -293,7 +309,7 @@ app.post('/bots/:botId/remove', async (req, res) => {
     delete bots[botId];
   }
 
-  const sessionDir = path.join(__dirname, '.wwebjs_auth', `session-${botId}`);
+  const sessionDir = path.join(DATA_DIR, '.wwebjs_auth', `session-${botId}`);
   if (fs.existsSync(sessionDir)) {
     try {
       fs.rmSync(sessionDir, { recursive: true, force: true });

@@ -1,0 +1,448 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WhatsApp Bot Manager</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+      .container { max-width: 1400px; margin: 0 auto; }
+      h1 { color: #1f2937; margin-bottom: 30px; }
+      
+      .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+      .tab-btn { 
+        padding: 12px 20px; 
+        border: none; 
+        background: none; 
+        cursor: pointer; 
+        font-size: 14px; 
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s;
+      }
+      .tab-btn.active { 
+        color: #3b82f6; 
+        border-bottom-color: #3b82f6;
+      }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      
+      .card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+      .card-header h3 { color: #1f2937; }
+      
+      .badge { 
+        display: inline-block; 
+        padding: 4px 12px; 
+        border-radius: 20px; 
+        font-size: 12px; 
+        font-weight: bold;
+      }
+      .badge-ready { background: #d1fae5; color: #065f46; }
+      .badge-waiting { background: #fef3c7; color: #92400e; }
+      
+      .bot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+      .bot-item { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+      .bot-item h4 { color: #1f2937; margin-bottom: 10px; }
+      .bot-info { font-size: 13px; color: #6b7280; margin: 8px 0; }
+      .bot-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .btn-small { padding: 6px 12px; font-size: 12px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer; }
+      .btn-small:hover { background: #f3f4f6; }
+      
+      .form-group { margin-bottom: 15px; }
+      label { display: block; margin-bottom: 5px; font-weight: 500; color: #374151; font-size: 13px; }
+      input, select, textarea { 
+        width: 100%; 
+        padding: 10px; 
+        border: 1px solid #d1d5db; 
+        border-radius: 6px; 
+        font-size: 13px;
+        font-family: inherit;
+      }
+      textarea { resize: vertical; min-height: 80px; }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+      
+      .btn { 
+        padding: 10px 20px; 
+        border: none; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        font-weight: 500;
+        font-size: 14px;
+        display: inline-block;
+      }
+      .btn-primary { background: #3b82f6; color: white; }
+      .btn-primary:hover { background: #2563eb; }
+      .btn-secondary { background: #e5e7eb; color: #374151; }
+      .btn-secondary:hover { background: #d1d5db; }
+      .btn-refresh { background: white; border: 1px solid #d1d5db; }
+      .btn-refresh:hover { background: #f3f4f6; }
+      
+      .result { 
+        background: #f6f6f6; 
+        padding: 12px; 
+        border-radius: 6px; 
+        border-left: 4px solid #3b82f6;
+        white-space: pre-wrap; 
+        font-size: 12px;
+        font-family: 'Courier New', monospace;
+        margin-top: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .result.success { border-left-color: #10b981; background: #ecfdf5; }
+      .result.error { border-left-color: #ef4444; background: #fef2f2; }
+      
+      .message-list { list-style: none; }
+      .message-item { 
+        background: #f9fafb; 
+        padding: 12px; 
+        margin-bottom: 10px; 
+        border-radius: 6px; 
+        border-left: 3px solid #3b82f6;
+        font-size: 13px;
+      }
+      .message-time { color: #9ca3af; font-size: 12px; }
+      .message-number { font-weight: 500; color: #1f2937; }
+      .message-text { color: #4b5563; margin: 4px 0; word-break: break-word; }
+      
+      .key-item { 
+        background: #f9fafb; 
+        padding: 12px; 
+        margin-bottom: 8px; 
+        border-radius: 6px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        font-size: 12px;
+        border: 1px solid #e5e7eb;
+      }
+      .key-value { font-family: 'Courier New', monospace; color: #374151; word-break: break-all; }
+      
+      .qr-display { text-align: center; margin: 12px 0; }
+      .qr-display img { max-width: 200px; border: 1px solid #e5e7eb; border-radius: 6px; }
+      
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🤖 WhatsApp Multi-Bot Manager</h1>
+      
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
+        <button class="tab-btn" onclick="switchTab('send')">✉️ Send Message</button>
+        <button class="tab-btn" onclick="switchTab('history')">📋 Message History</button>
+        <button class="tab-btn" onclick="switchTab('keys')">🔑 API Keys</button>
+      </div>
+
+      <!-- OVERVIEW TAB -->
+      <div id="overview" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h3>Connected Bots</h3>
+            <button class="btn btn-refresh" onclick="refreshBots()">🔄 Refresh Status</button>
+          </div>
+          <div class="bot-grid" id="bots-grid">Loading...</div>
+        </div>
+      </div>
+
+      <!-- SEND MESSAGE TAB -->
+      <div id="send" class="tab-content">
+        <div class="card">
+          <h3>✉️ Send Message</h3>
+          <form onsubmit="sendMessage(event)">
+            <div class="form-group">
+              <label>Select Bot:</label>
+              <select id="sendBotSelect" required>
+                <option value="">-- Choose a bot --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Phone Number:</label>
+              <input type="text" id="sendNumber" placeholder="e.g. 94775352074" required />
+            </div>
+            <div class="form-group">
+              <label>Message:</label>
+              <textarea id="sendMsgText" placeholder="Type your message..." required></textarea>
+            </div>
+            <div class="form-group">
+              <label>API Key:</label>
+              <input type="password" id="sendApiKey" placeholder="Your API key" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </form>
+          <div id="sendResult" class="result" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- MESSAGE HISTORY TAB -->
+      <div id="history" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3>📋 Message History</h3>
+            <select id="historyBotSelect" onchange="loadHistory()" style="max-width: 200px;">
+              <option value="">-- Select bot --</option>
+            </select>
+          </div>
+          <ul id="messageList" class="message-list">
+            <li class="message-item">Select a bot to view history</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- API KEYS TAB -->
+      <div id="keys" class="tab-content">
+        <div class="two-col">
+          <div class="card">
+            <h3>View Keys</h3>
+            <div class="form-group">
+              <label>Select Bot:</label>
+              <select id="keysBotSelect" onchange="loadKeys()" required>
+                <option value="">-- Choose a bot --</option>
+              </select>
+            </div>
+            <div id="keysList"></div>
+          </div>
+          <div class="card">
+            <h3>Add New Key</h3>
+            <form onsubmit="addKey(event)">
+              <div class="form-group">
+                <label>Bot:</label>
+                <select id="addKeyBotSelect" required>
+                  <option value="">-- Choose a bot --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>New API Key:</label>
+                <input type="text" id="newKeyInput" placeholder="e.g. sk_live_..." required />
+              </div>
+              <div class="form-group">
+                <label>Auth Key (existing key for this bot):</label>
+                <input type="password" id="addKeyAuthKey" placeholder="API key for authentication" required />
+              </div>
+              <button type="submit" class="btn btn-primary">Add Key</button>
+            </form>
+            <div id="addKeyResult" class="result" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = window.location.origin;
+      let bots = [];
+
+      function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+      }
+
+      async function refreshBots() {
+        try {
+          const res = await fetch(`${API_BASE}/bots`);
+          if (!res.ok) throw new Error('Failed to fetch bots');
+          bots = (await res.json()).bots || [];
+          renderBots();
+          updateSelects();
+        } catch (err) {
+          document.getElementById('bots-grid').innerHTML = `<div class="card" style="color: red;">Error: ${err.message}</div>`;
+        }
+      }
+
+      function renderBots() {
+        const grid = document.getElementById('bots-grid');
+        if (bots.length === 0) {
+          grid.innerHTML = '<div style="color: #6b7280;">No bots configured</div>';
+          return;
+        }
+        grid.innerHTML = bots.map(bot => `
+          <div class="bot-item">
+            <h4>${bot.name}</h4>
+            <div class="bot-info"><strong>ID:</strong> ${bot.id}</div>
+            <div class="bot-info">
+              <span class="badge ${bot.ready ? 'badge-ready' : 'badge-waiting'}">
+                ${bot.ready ? '✓ Ready' : '⏳ Waiting'}
+              </span>
+            </div>
+            <div class="bot-info"><strong>Messages:</strong> ${bot.messageCount}</div>
+            <div class="bot-info"><strong>API Keys:</strong> ${bot.keyCount}</div>
+            ${bot.qrAvailable ? `<div class="qr-display"><img src="" alt="QR" id="qr-${bot.id}" /></div>` : ''}
+            <div class="bot-actions">
+              <button class="btn-small" onclick="viewBotKeys('${bot.id}')">🔑 Keys</button>
+              <button class="btn-small" onclick="viewBotHistory('${bot.id}')">📋 History</button>
+            </div>
+          </div>
+        `).join('');
+        
+        bots.forEach(bot => {
+          if (bot.qrAvailable) loadBotQR(bot.id);
+        });
+      }
+
+      async function loadBotQR(botId) {
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/qr`);
+          if (res.ok) {
+            const data = await res.json();
+            const img = document.getElementById(`qr-${botId}`);
+            if (img) img.src = data.qrDataUrl;
+          }
+        } catch (err) {
+          console.error(`Failed to load QR:`, err);
+        }
+      }
+
+      function updateSelects() {
+        const options = '<option value="">-- Choose a bot --</option>' + 
+          bots.map(b => `<option value="${b.id}">${b.name} ${b.ready ? '✓' : ''}</option>`).join('');
+        document.getElementById('sendBotSelect').innerHTML = options;
+        document.getElementById('keysBotSelect').innerHTML = options;
+        document.getElementById('historyBotSelect').innerHTML = options;
+        document.getElementById('addKeyBotSelect').innerHTML = options;
+      }
+
+      async function sendMessage(e) {
+        e.preventDefault();
+        const botId = document.getElementById('sendBotSelect').value;
+        const number = document.getElementById('sendNumber').value;
+        const message = document.getElementById('sendMsgText').value;
+        const apiKey = document.getElementById('sendApiKey').value;
+        const result = document.getElementById('sendResult');
+
+        result.textContent = 'Sending...';
+        result.className = 'result';
+        result.style.display = 'block';
+
+        try {
+          const res = await fetch(`${API_BASE}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ botId, number, message, apiKey })
+          });
+          const data = await res.json();
+          result.className = res.ok ? 'result success' : 'result error';
+          result.textContent = JSON.stringify(data, null, 2);
+          if (res.ok) {
+            document.getElementById('sendMsgText').value = '';
+            setTimeout(() => loadHistory(), 1000);
+          }
+        } catch (err) {
+          result.className = 'result error';
+          result.textContent = 'Error: ' + err.message;
+        }
+      }
+
+      async function loadHistory() {
+        const botId = document.getElementById('historyBotSelect').value;
+        if (!botId) {
+          document.getElementById('messageList').innerHTML = '<li class="message-item">Select a bot to view history</li>';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/history?limit=50`);
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Failed to fetch history');
+          }
+          const data = await res.json();
+          const messages = data.messages || [];
+          const list = document.getElementById('messageList');
+          
+          if (messages.length === 0) {
+            list.innerHTML = '<li class="message-item">No messages sent yet</li>';
+            return;
+          }
+
+          list.innerHTML = messages.map(msg => `
+            <li class="message-item">
+              <div class="message-time">${new Date(msg.timestamp).toLocaleString()}</div>
+              <div class="message-number">📱 ${msg.number}</div>
+              <div class="message-text">${msg.message}</div>
+            </li>
+          `).join('');
+        } catch (err) {
+          document.getElementById('messageList').innerHTML = `<li class="message-item" style="color: red;">Error: ${err.message}</li>`;
+        }
+      }
+
+      function viewBotHistory(botId) {
+        document.getElementById('historyBotSelect').value = botId;
+        switchTab('history');
+        loadHistory();
+      }
+
+      async function loadKeys() {
+        const botId = document.getElementById('keysBotSelect').value;
+        if (!botId) {
+          document.getElementById('keysList').innerHTML = '';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/keys`);
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Failed to fetch keys');
+          }
+          const data = await res.json();
+          const keys = data.keys || [];
+          const keyDisplay = document.getElementById('keysList');
+          keyDisplay.innerHTML = keys.map(key => `
+            <div class="key-item">
+              <div class="key-value">${key}</div>
+            </div>
+          `).join('');
+        } catch (err) {
+          document.getElementById('keysList').innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+        }
+      }
+
+      function viewBotKeys(botId) {
+        document.getElementById('keysBotSelect').value = botId;
+        switchTab('keys');
+        loadKeys();
+      }
+
+      async function addKey(e) {
+        e.preventDefault();
+        const botId = document.getElementById('addKeyBotSelect').value;
+        const newKey = document.getElementById('newKeyInput').value;
+        const authKey = document.getElementById('addKeyAuthKey').value;
+        const result = document.getElementById('addKeyResult');
+
+        result.textContent = 'Adding key...';
+        result.className = 'result';
+        result.style.display = 'block';
+
+        try {
+          const res = await fetch(`${API_BASE}/bots/${botId}/keys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ botId, newKey, apiKey: authKey })
+          });
+          const data = await res.json();
+          result.className = res.ok ? 'result success' : 'result error';
+          result.textContent = JSON.stringify(data, null, 2);
+          if (res.ok) {
+            document.getElementById('newKeyInput').value = '';
+            document.getElementById('addKeyAuthKey').value = '';
+            refreshBots();
+            loadKeys();
+          }
+        } catch (err) {
+          result.className = 'result error';
+          result.textContent = 'Error: ' + err.message;
+        }
+      }
+
+      refreshBots();
+      setInterval(refreshBots, 5000);
+    </script>
+  </body>
+</html>

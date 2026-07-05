@@ -3,6 +3,8 @@ FROM node:18-slim
 # Install Chromium and required fonts
 RUN apt-get update && apt-get install -y \
     chromium \
+    dbus \
+    dbus-x11 \
     fonts-ipafont-gothic \
     fonts-wqy-zenhei \
     fonts-thai-tlwg \

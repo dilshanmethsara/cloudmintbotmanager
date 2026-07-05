@@ -56,10 +56,13 @@ const initializeBot = (botConfig) => {
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--no-first-run',
-        '--no-zygote',
-        '--single-process',
         '--disable-extensions',
-        '--disable-software-rasterizer'
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-sync',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--safebrowsing-disable-auto-update'
       ]
     }
   });

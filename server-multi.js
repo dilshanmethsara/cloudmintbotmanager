@@ -50,7 +50,17 @@ const initializeBot = (botConfig) => {
     puppeteer: {
       headless: true,
       executablePath: browserExecutablePath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-extensions',
+        '--disable-software-rasterizer'
+      ]
     }
   });
 

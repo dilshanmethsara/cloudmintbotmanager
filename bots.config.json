@@ -11,7 +11,7 @@
     {
       "id": "school_web",
       "name": "School Web Bot",
-      "enabled": true,
+      "enabled": false,
       "apiKeys": [
         "sk_live_school_web_9i8h7g6f5e4d"
       ]
@@ -27,7 +27,7 @@
     {
       "id": "test_bot",
       "name": "test_bot",
-      "enabled": true,
+      "enabled": false,
       "apiKeys": [
         "sk_live_test_bot_x86k1ou28flgeaoh"
       ]

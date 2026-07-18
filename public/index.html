@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WhatsApp Bot</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; max-width: 700px; margin: 0 auto; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+      input, textarea, button { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; }
+      #qr { width: 300px; height: 300px; border: 1px solid #ccc; margin-top: 10px; }
+      .result { white-space: pre-wrap; background: #f6f6f6; padding: 10px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>WhatsApp Bot</h1>
+
+    <div class="card">
+      <h3>Status</h3>
+      <div id="status">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h3>Send test message</h3>
+      <form id="sendForm">
+        <input id="number" placeholder="Phone number (e.g. 94775352074)" required />
+        <textarea id="message" rows="4" placeholder="Message text" required></textarea>
+        <input id="apiKey" placeholder="API key (sk_live_...)" value="sk_live_1a2b3c4d5e6f7g8h" required />
+        <small style="display: block; margin-top: 4px; color: #666;">Set in .env API_KEYS</small>
+        <button type="submit">Send</button>
+      </form>
+      <div id="sendResult" class="result" style="margin-top: 10px;">No request sent yet.</div>
+    </div>
+
+    <div class="card">
+      <h3>QR Code</h3>
+      <img id="qr" src="" alt="QR code" />
+    </div>
+
+    <script>
+      async function refresh() {
+        const r = await fetch('/status');
+        const s = await r.json();
+        document.getElementById('status').innerText = JSON.stringify(s, null, 2);
+        if (s.qrAvailable) {
+          const q = await fetch('/qr');
+          const j = await q.json();
+          document.getElementById('qr').src = j.qrDataUrl;
+        }
+      }
+
+      document.getElementById('sendForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const number = document.getElementById('number').value;
+        const message = document.getElementById('message').value;
+        const apiKey = document.getElementById('apiKey').value;
+        const result = document.getElementById('sendResult');
+
+        result.textContent = 'Sending...';
+
+        try {
+          const res = await fetch('/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ number, message, apiKey })
+          });
+          const data = await res.json();
+          result.textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          result.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      setInterval(refresh, 3000);
+      refresh();
+    </script>
+  </body>
+</html>

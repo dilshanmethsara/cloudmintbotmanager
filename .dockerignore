@@ -1,0 +1,12 @@
+node_modules
+.env
+.wwebjs_auth
+.wwebjs_cache
+.git
+.gitignore
+README.md
+MULTI_BOT_GUIDE.md
+API_KEY_SETUP.md
+walkthrough.md
+task.md
+implementation_plan.md

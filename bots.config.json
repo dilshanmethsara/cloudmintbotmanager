@@ -1,0 +1,36 @@
+{
+  "bots": [
+    {
+      "id": "game_store",
+      "name": "Game Store Bot",
+      "enabled": true,
+      "apiKeys": [
+        "sk_live_game_store_1a2b3c4d5e6f"
+      ]
+    },
+    {
+      "id": "school_web",
+      "name": "School Web Bot",
+      "enabled": false,
+      "apiKeys": [
+        "sk_live_school_web_9i8h7g6f5e4d"
+      ]
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-Commerce Bot",
+      "enabled": false,
+      "apiKeys": [
+        "sk_live_ecommerce_3c2b1a9i8h7g"
+      ]
+    },
+    {
+      "id": "test_bot",
+      "name": "test_bot",
+      "enabled": false,
+      "apiKeys": [
+        "sk_live_test_bot_x86k1ou28flgeaoh"
+      ]
+    }
+  ]
+}

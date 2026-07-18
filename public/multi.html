@@ -5,7 +5,7 @@
     <title>WhatsApp Bot Manager</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
       .container { max-width: 1400px; margin: 0 auto; }
       h1 { color: #1f2937; margin-bottom: 30px; }
       
@@ -132,19 +132,127 @@
       
       .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
       @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
+      
+      /* Login Screen Styles */
+      .login-screen {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .login-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+      }
+      .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .login-header h2 { color: #1f2937; margin-bottom: 8px; }
+      .login-header p { color: #6b7280; }
+      .login-form .form-group { margin-bottom: 20px; }
+      .login-form label { font-size: 14px; margin-bottom: 8px; }
+      .login-form input {
+        padding: 14px;
+        font-size: 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        transition: border-color 0.2s;
+      }
+      .login-form input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+      }
+      .login-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.2s;
+      }
+      .login-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+      }
+      .login-btn:active {
+        transform: translateY(0);
+      }
+      .login-error {
+        background: #fef2f2;
+        color: #dc2626;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+        font-size: 14px;
+      }
+      .login-error.show { display: block; }
+      .main-app { display: none; }
+      .main-app.authenticated { display: block; }
+      .logout-btn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        margin-left: auto;
+      }
+      .logout-btn:hover { background: #dc2626; }
+      .header-with-logout {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>🤖 WhatsApp Multi-Bot Manager</h1>
-      
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
-        <button class="tab-btn" onclick="switchTab('pair')">🔗 Pair with Code</button>
-        <button class="tab-btn" onclick="switchTab('send')">✉️ Send Message</button>
-        <button class="tab-btn" onclick="switchTab('history')">📋 Message History</button>
-        <button class="tab-btn" onclick="switchTab('keys')">🔑 API Keys</button>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+      <div class="login-card">
+        <div class="login-header">
+          <h2>🔐 WhatsApp Bot Manager</h2>
+          <p>Enter password to access dashboard</p>
+        </div>
+        <div id="loginError" class="login-error"></div>
+        <form id="loginForm" class="login-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="btn login-btn">Login</button>
+        </form>
       </div>
+    </div>
+
+    <!-- Main App (Hidden until authenticated) -->
+    <div id="mainApp" class="main-app">
+      <div class="container">
+        <div class="header-with-logout">
+          <h1>🤖 WhatsApp Multi-Bot Manager</h1>
+          <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+        
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
+          <button class="tab-btn" onclick="switchTab('pair')">🔗 Pair with Code</button>
+          <button class="tab-btn" onclick="switchTab('send')">✉️ Send Message</button>
+          <button class="tab-btn" onclick="switchTab('history')">📋 Message History</button>
+          <button class="tab-btn" onclick="switchTab('keys')">🔑 API Keys</button>
+        </div>
 
       <!-- OVERVIEW TAB -->
       <div id="overview" class="tab-content active">
@@ -635,6 +743,55 @@
         } catch (err) {
           alert('Error: ' + err.message);
         }
+      }
+
+      // ===== AUTHENTICATION =====
+      const AUTH_PASSWORD = 'pathum2010G';
+      const AUTH_KEY = 'wb_auth_token';
+
+      function checkAuth() {
+        const stored = localStorage.getItem(AUTH_KEY);
+        if (stored === AUTH_PASSWORD) {
+          showMainApp();
+          return true;
+        }
+        return false;
+      }
+
+      function showLoginScreen() {
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('mainApp').classList.remove('authenticated');
+      }
+
+      function showMainApp() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').classList.add('authenticated');
+      }
+
+      function handleLogin(e) {
+        e.preventDefault();
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+        
+        if (password === AUTH_PASSWORD) {
+          localStorage.setItem(AUTH_KEY, password);
+          showMainApp();
+          refreshBots();
+        } else {
+          errorEl.textContent = '❌ Incorrect password';
+          errorEl.classList.add('show');
+          document.getElementById('loginPassword').value = '';
+        }
+      }
+
+      function logout() {
+        localStorage.removeItem(AUTH_KEY);
+        showLoginScreen();
+      }
+
+      // Check auth on page load
+      if (!checkAuth()) {
+        showLoginScreen();
       }
 
       refreshBots();

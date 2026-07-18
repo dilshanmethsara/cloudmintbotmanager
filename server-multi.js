@@ -169,10 +169,16 @@ app.use(express.static('public'));
 // API Key validation middleware
 const validateApiKey = (req, res, next) => {
   const botId = req.body?.botId || req.query.botId || req.headers['x-bot-id'] || req.params.botId;
+  const apiKey = req.body?.apiKey || req.query.apiKey || req.headers['x-api-key'];
 
   if (!botId) {
     console.log(`[AUTH_FAIL] Missing botId`);
     return res.status(400).json({ error: 'Missing botId parameter' });
+  }
+
+  if (!apiKey) {
+    console.log(`[AUTH_FAIL] Missing apiKey for bot '${botId}'`);
+    return res.status(401).json({ error: 'Missing apiKey parameter' });
   }
 
   if (!botStates[botId]) {
@@ -180,7 +186,14 @@ const validateApiKey = (req, res, next) => {
     return res.status(404).json({ error: `Bot '${botId}' not found` });
   }
 
-  console.log(`[AUTH_BYPASS] API Key check bypassed for bot '${botId}'`);
+  // Check if API key is valid for this bot
+  const botConfig = botsConfig.bots.find(b => b.id === botId);
+  if (!botConfig || !botConfig.apiKeys?.includes(apiKey)) {
+    console.log(`[AUTH_FAIL] Invalid API key for bot '${botId}'`);
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+
+  console.log(`[AUTH_OK] API Key validated for bot '${botId}'`);
   req.botId = botId;
   next();
 };

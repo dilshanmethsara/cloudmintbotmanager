@@ -428,6 +428,53 @@ app.get('/bots/:botId/qr', async (req, res) => {
   res.status(404).json({ error: 'Neither QR code nor pairing code available yet.' });
 });
 
+// Get API keys for a specific bot
+app.get('/bots/:botId/keys', validateApiKey, (req, res) => {
+  const { botId } = req.params;
+  if (!botStates[botId]) {
+    return res.status(404).json({ error: `Bot '${botId}' not found` });
+  }
+  const keys = botStates[botId].config.apiKeys || [];
+  res.json({ botId, keys });
+});
+
+// Add new API key for a specific bot
+app.post('/bots/:botId/keys', validateApiKey, (req, res) => {
+  const { botId } = req.params;
+  const { newKey } = req.body;
+
+  if (!botStates[botId]) {
+    return res.status(404).json({ error: `Bot '${botId}' not found` });
+  }
+
+  if (!newKey) {
+    return res.status(400).json({ error: 'newKey is required in request body' });
+  }
+
+  const configIndex = botsConfig.bots.findIndex(b => b.id === botId);
+  if (configIndex === -1) {
+    return res.status(404).json({ error: `Bot '${botId}' not found in configuration` });
+  }
+
+  // Check if key already exists
+  if (botStates[botId].config.apiKeys.includes(newKey)) {
+    return res.status(400).json({ error: 'API key already exists for this bot' });
+  }
+
+  // Add to in-memory state
+  botStates[botId].config.apiKeys.push(newKey);
+  // Add to persistent config
+  botsConfig.bots[configIndex].apiKeys.push(newKey);
+
+  try {
+    fs.writeFileSync(botsConfigPath, JSON.stringify(botsConfig, null, 2), 'utf8');
+    res.json({ success: true, botId, keys: botStates[botId].config.apiKeys });
+  } catch (error) {
+    console.error('[ERROR] Failed to save bots.config.json:', error);
+    res.status(500).json({ error: 'Failed to write configuration file' });
+  }
+});
+
 // ============= MESSAGE ENDPOINTS =============
 
 // Verify API key for a bot

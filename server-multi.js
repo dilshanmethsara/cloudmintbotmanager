@@ -428,8 +428,8 @@ app.get('/bots/:botId/qr', async (req, res) => {
   res.status(404).json({ error: 'Neither QR code nor pairing code available yet.' });
 });
 
-// Get API keys for a specific bot
-app.get('/bots/:botId/keys', validateApiKey, (req, res) => {
+// Get API keys for a specific bot (no auth needed - need to view keys to get one)
+app.get('/bots/:botId/keys', (req, res) => {
   const { botId } = req.params;
   if (!botStates[botId]) {
     return res.status(404).json({ error: `Bot '${botId}' not found` });
@@ -438,7 +438,7 @@ app.get('/bots/:botId/keys', validateApiKey, (req, res) => {
   res.json({ botId, keys });
 });
 
-// Add new API key for a specific bot
+// Add new API key for a specific bot (requires auth)
 app.post('/bots/:botId/keys', validateApiKey, (req, res) => {
   const { botId } = req.params;
   const { newKey } = req.body;

@@ -438,8 +438,8 @@ app.get('/bots/:botId/keys', (req, res) => {
   res.json({ botId, keys });
 });
 
-// Add new API key for a specific bot (requires auth)
-app.post('/bots/:botId/keys', validateApiKey, (req, res) => {
+// Add new API key for a specific bot (no auth needed - UI has password protection)
+app.post('/bots/:botId/keys', (req, res) => {
   const { botId } = req.params;
   const { newKey } = req.body;
 
@@ -475,8 +475,8 @@ app.post('/bots/:botId/keys', validateApiKey, (req, res) => {
   }
 });
 
-// Delete/revoke API key for a specific bot (requires auth)
-app.delete('/bots/:botId/keys', validateApiKey, (req, res) => {
+// Delete/revoke API key for a specific bot (no auth needed - UI has password protection)
+app.delete('/bots/:botId/keys', (req, res) => {
   const { botId } = req.params;
   const { keyToDelete } = req.body;
 

@@ -645,16 +645,10 @@
         if (!confirm(`Are you sure you want to revoke this API key?\n\n${keyToDelete}`)) return;
 
         try {
-          const authKey = document.getElementById('addKeyAuthKey').value;
-          if (!authKey) {
-            alert('Please enter an existing API key in the "Add New Key" section first for authentication');
-            return;
-          }
-
           const res = await fetch(`${API_BASE}/bots/${botId}/keys`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ botId, keyToDelete, apiKey: authKey })
+            body: JSON.stringify({ botId, keyToDelete })
           });
           const data = await res.json();
           if (res.ok) {
@@ -672,7 +666,6 @@
         e.preventDefault();
         const botId = document.getElementById('addKeyBotSelect').value;
         const newKey = document.getElementById('newKeyInput').value;
-        const authKey = document.getElementById('addKeyAuthKey').value;
         const result = document.getElementById('addKeyResult');
 
         result.textContent = 'Adding key...';
@@ -683,14 +676,13 @@
           const res = await fetch(`${API_BASE}/bots/${botId}/keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ botId, newKey, apiKey: authKey })
+            body: JSON.stringify({ botId, newKey })
           });
           const data = await res.json();
           result.className = res.ok ? 'result success' : 'result error';
           result.textContent = JSON.stringify(data, null, 2);
           if (res.ok) {
             document.getElementById('newKeyInput').value = '';
-            document.getElementById('addKeyAuthKey').value = '';
             refreshBots();
             loadKeys();
           }

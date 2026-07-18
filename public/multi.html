@@ -633,6 +633,7 @@
           keyDisplay.innerHTML = keys.map(key => `
             <div class="key-item">
               <div class="key-value">${key}</div>
+              <button class="btn-small btn-delete" onclick="deleteKey('${botId}', '${key}')" style="padding: 4px 10px; font-size: 11px;">🗑 Revoke</button>
             </div>
           `).join('');
         } catch (err) {
@@ -640,10 +641,31 @@
         }
       }
 
-      function viewBotKeys(botId) {
-        document.getElementById('keysBotSelect').value = botId;
-        switchTab('keys');
-        loadKeys();
+      async function deleteKey(botId, keyToDelete) {
+        if (!confirm(`Are you sure you want to revoke this API key?\n\n${keyToDelete}`)) return;
+
+        try {
+          const authKey = document.getElementById('addKeyAuthKey').value;
+          if (!authKey) {
+            alert('Please enter an existing API key in the "Add New Key" section first for authentication');
+            return;
+          }
+
+          const res = await fetch(`${API_BASE}/bots/${botId}/keys`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ botId, keyToDelete, apiKey: authKey })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            loadKeys();
+            refreshBots();
+          } else {
+            alert(`Error: ${data.error || 'Failed to delete key'}`);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
       }
 
       async function addKey(e) {

@@ -475,6 +475,49 @@ app.post('/bots/:botId/keys', validateApiKey, (req, res) => {
   }
 });
 
+// Delete/revoke API key for a specific bot (requires auth)
+app.delete('/bots/:botId/keys', validateApiKey, (req, res) => {
+  const { botId } = req.params;
+  const { keyToDelete } = req.body;
+
+  if (!botStates[botId]) {
+    return res.status(404).json({ error: `Bot '${botId}' not found` });
+  }
+
+  if (!keyToDelete) {
+    return res.status(400).json({ error: 'keyToDelete is required in request body' });
+  }
+
+  const configIndex = botsConfig.bots.findIndex(b => b.id === botId);
+  if (configIndex === -1) {
+    return res.status(404).json({ error: `Bot '${botId}' not found in configuration` });
+  }
+
+  // Check if key exists
+  const keyIndex = botStates[botId].config.apiKeys.indexOf(keyToDelete);
+  if (keyIndex === -1) {
+    return res.status(404).json({ error: 'API key not found for this bot' });
+  }
+
+  // Prevent deleting the last key
+  if (botStates[botId].config.apiKeys.length <= 1) {
+    return res.status(400).json({ error: 'Cannot delete the last API key. At least one key is required.' });
+  }
+
+  // Remove from in-memory state
+  botStates[botId].config.apiKeys.splice(keyIndex, 1);
+  // Remove from persistent config
+  botsConfig.bots[configIndex].apiKeys.splice(keyIndex, 1);
+
+  try {
+    fs.writeFileSync(botsConfigPath, JSON.stringify(botsConfig, null, 2), 'utf8');
+    res.json({ success: true, botId, keys: botStates[botId].config.apiKeys });
+  } catch (error) {
+    console.error('[ERROR] Failed to save bots.config.json:', error);
+    res.status(500).json({ error: 'Failed to write configuration file' });
+  }
+});
+
 // ============= MESSAGE ENDPOINTS =============
 
 // Verify API key for a bot

@@ -37,10 +37,19 @@ const botStates = {};
 const initializeBot = (botConfig) => {
   console.log(`[STARTUP] Creating bot: ${botConfig.id} (${botConfig.name})`);
   
-  const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const edgePath = process.env.EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+  // Detect OS and set browser path
+  const os = require('os');
+  const isWindows = os.platform() === 'win32';
+  
+  const chromePath = process.env.CHROME_PATH || (isWindows 
+    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' 
+    : '/usr/bin/chromium-browser');
+  const edgePath = process.env.EDGE_PATH || (isWindows 
+    ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe' 
+    : null);
   const browserExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
-    (require('fs').existsSync(chromePath) ? chromePath : edgePath);
+    (require('fs').existsSync(chromePath) ? chromePath : 
+     (edgePath && require('fs').existsSync(edgePath) ? edgePath : undefined));
 
   const client = new Client({
     authStrategy: new LocalAuth({ 
